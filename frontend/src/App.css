@@ -1,0 +1,124 @@
+/* App.css - Masaledaar Theme */
+:root {
+  --saffron: #FF9933;     /* Saffron - Energy */
+  --turmeric: #FFC300;    /* Vibrant Yellow/Gold */
+  --earth-red: #B22222;   /* Deep Chili Red */
+  --chai-cream: #FFF8E7;  /* Soft Warm Background */
+  --charcoal: #2D2D2D;    /* For readable text */
+}
+
+body {
+  background-color: var(--chai-cream);
+  color: var(--charcoal);
+  font-family: 'Poppins', 'Segoe UI', sans-serif;
+}
+
+.custom-navbar {
+  background-color: var(--earth-red) !important; /* Bold Red Navbar */
+  border-bottom: 4px solid var(--saffron);
+}
+
+.hero-section {
+  background: linear-gradient(135deg, var(--saffron), var(--turmeric));
+  padding: 80px 20px;
+  color: white;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+  border-bottom-left-radius: 50px;
+  border-bottom-right-radius: 50px;
+}
+
+.event-card {
+  background-color: white;
+  border-left: 5px solid var(--earth-red) !important; /* Desi border style */
+  border-radius: 15px;
+  transition: 0.3s;
+  overflow: hidden;
+}
+
+.event-card:hover {
+  transform: scale(1.03);
+  box-shadow: 0 15px 30px rgba(178, 34, 34, 0.2);
+}
+
+.btn-masala {
+  background-color: var(--earth-red) !important;
+  border: none !important;
+  color: white !important;
+  font-weight: bold;
+  letter-spacing: 1px;
+  border-radius: 30px;
+  padding: 10px 25px;
+}
+
+.badge-desi {
+  background-color: var(--saffron) !important;
+  color: white !important;
+}
+
+/* Add this to the bottom of App.css */
+
+/* Padding to prevent content from hiding behind the bottom bar */
+.main-content {
+  padding-bottom: 80px; 
+}
+
+/* The Mobile-App Style Bottom Navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: var(--chai-cream);
+  border-top: 3px solid var(--saffron);
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0;
+  z-index: 1000;
+  box-shadow: 0 -5px 15px rgba(178, 34, 34, 0.15);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--earth-red);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: 0.3s;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.bottom-nav-item:hover, .bottom-nav-item:focus {
+  color: var(--saffron);
+  transform: translateY(-2px);
+}
+
+.bottom-nav-icon {
+  font-size: 1.5rem;
+  margin-bottom: 2px;
+}
+
+/* Offcanvas Menu Styling */
+.offcanvas-desi {
+  background-color: var(--chai-cream) !important;
+  color: var(--charcoal);
+}
+
+.offcanvas-header-desi {
+  background-color: var(--earth-red);
+  color: white;
+  border-bottom: 4px solid var(--saffron);
+}
+
+.category-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
+/* Custom styling for the Category tiles */
+.category-tile:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+}
