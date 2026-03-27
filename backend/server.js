@@ -4,6 +4,7 @@ const cors = require('cors');
 const dns = require('dns');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer'); // NEW: Required for OTP Emails
 const User = require('./models/User');
 const Event = require('./models/Event');
 const Message = require('./models/Message');
@@ -16,12 +17,44 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, { family: 4 })
 .then(() => console.log('🔥 MongoDB Connected Successfully!'))
 .catch((err) => console.log('❌ MongoDB Connection Error: ', err.message));
+
+// ==========================================
+// 🛡️ SECURITY MIDDLEWARE
+// ==========================================
+// 1. Check if user is logged in
+const protect = async (req, res, next) => {
+  let token;
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    try {
+      token = req.headers.authorization.split(' ')[1];
+      // Note: Using the exact secret key you used in your login route!
+      const decoded = jwt.verify(token, 'ServeInCitySecretKey123'); 
+      req.user = await User.findById(decoded.id).select('-password');
+      next();
+    } catch (error) {
+      res.status(401).json({ message: 'Not authorized, token failed' });
+    }
+  }
+  if (!token) {
+    res.status(401).json({ message: 'Not authorized, no token provided' });
+  }
+};
+
+// 2. Check if user is an Admin
+const isAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Access denied. Administrator clearance required.' });
+  }
+};
+
 
 // ==========================================
 // 🚀 REGISTRATION API ENDPOINT
@@ -84,13 +117,130 @@ app.post('/api/login', async (req, res) => {
         name: user.name,
         email: user.email,
         city: user.city,
-        role: user.role // Sends role to React to trigger specific UI
+        role: user.role,
+        profilePhoto: user.profilePhoto // Sends role to React to trigger specific UI
       }
     });
 
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error during login" });
+  }
+});
+
+// ==========================================
+// 🔑 MULTI-FACTOR AUTHENTICATION (OTP)
+// ==========================================
+
+// 1. Generate & Send OTP (Forgot Password)
+app.post('/api/users/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "No user found with that email address." });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetPasswordOtp = otp;
+    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await user.save({ validateBeforeSave: false });
+
+    // Send the email using variables from your .env file
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: 'ServeInCity - Password Reset OTP',
+      text: `Your ServeInCity password reset code is: ${otp} \n\nThis code is valid for 10 minutes.`
+    });
+
+    res.status(200).json({ message: "OTP sent to email!" });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Email could not be sent", error: error.message });
+  }
+});
+
+// 2. Verify OTP & Set New Password
+app.post('/api/users/reset-password', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    const user = await User.findOne({ 
+      email, 
+      resetPasswordOtp: otp,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) return res.status(400).json({ message: "Invalid or expired OTP." });
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetPasswordOtp = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successfully!" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// 3. Change Password Inside Settings (Requires Login)
+app.put('/api/users/change-password', protect, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user.id);
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) return res.status(400).json({ message: "Incorrect current password." });
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.status(200).json({ message: "Password successfully updated!" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
+// 4. Update Profile Information
+app.put('/api/users/profile', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    if (user) {
+      // Update fields if they were provided in the request
+      user.name = req.body.name || user.name;
+      user.city = req.body.city || user.city;
+      user.profilePhoto = req.body.profilePhoto || user.profilePhoto;
+      
+      const updatedUser = await user.save();
+      
+      res.status(200).json({
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        city: updatedUser.city,
+        role: updatedUser.role,
+        profilePhoto: updatedUser.profilePhoto
+      });
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 });
 
@@ -123,7 +273,7 @@ app.post('/api/events', async (req, res) => {
       volunteersNeeded,
       eventDate,
       eventTime,
-      organizer: organizerId // Records which NGO created it
+      organizer: organizerId 
     });
 
     await newEvent.save();
@@ -144,12 +294,10 @@ app.post('/api/events/:id/join', async (req, res) => {
     const event = await Event.findById(eventId);
     if (!event) return res.status(404).json({ message: "Event not found" });
 
-    // Prevent double-joining
     if (event.attendees.includes(userId)) {
       return res.status(400).json({ message: "You have already joined this event!" });
     }
 
-    // Prevent over-booking
     if (event.volunteersNeeded <= 0) {
       return res.status(400).json({ message: "This event is already full!" });
     }
@@ -166,21 +314,37 @@ app.post('/api/events/:id/join', async (req, res) => {
   }
 });
 
+// 4. DELETE AN EVENT (Admin Only) - For the Dashboard!
+app.delete('/api/events/:id', protect, isAdmin, async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    await Event.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Event securely deleted by Admin" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+});
+
 // ==========================================
 // 📊 USER DASHBOARD API (Profile Page)
 // ==========================================
 app.get('/api/users/:id/dashboard', async (req, res) => {
   try {
     const userId = req.params.id;
-    const { role } = req.query; // React will tell us if they are a volunteer or ngo
+    const { role } = req.query; 
 
     let userEvents = [];
 
     if (role === 'ngo') {
-      // Find all events created by this specific NGO
-      userEvents = await Event.find({ organizer: userId }).sort({ createdAt: -1 });
+      userEvents = await Event.find({ organizer: userId })
+      .populate('attendees', 'name email')
+      .sort({ createdAt: -1 });
     } else {
-      // Find all events where this Volunteer's ID is inside the attendees array
       userEvents = await Event.find({ attendees: userId }).sort({ createdAt: -1 });
     }
 
@@ -191,15 +355,14 @@ app.get('/api/users/:id/dashboard', async (req, res) => {
     res.status(500).json({ message: "Server Error fetching dashboard" });
   }
 });
+
 // ==========================================
 // 🏆 LEADERBOARD API ENDPOINT
 // ==========================================
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    // 1. Find all users who are strictly volunteers
     const volunteers = await User.find({ role: 'volunteer' }).select('-password');
 
-    // 2. Calculate their impact (How many events contain their ID)
     const leaderboardData = await Promise.all(volunteers.map(async (volunteer) => {
       const eventsJoined = await Event.countDocuments({ attendees: volunteer._id });
       return {
@@ -210,10 +373,7 @@ app.get('/api/leaderboard', async (req, res) => {
       };
     }));
 
-    // 3. Sort them from highest impact to lowest (The Algorithm!)
     leaderboardData.sort((a, b) => b.eventsJoined - a.eventsJoined);
-
-    // 4. Return the Top 10 heroes
     res.status(200).json(leaderboardData.slice(0, 10));
 
   } catch (error) {
@@ -221,12 +381,12 @@ app.get('/api/leaderboard', async (req, res) => {
     res.status(500).json({ message: "Server Error fetching leaderboard" });
   }
 });
+
 // ==========================================
 // 🏢 NGO DIRECTORY API ENDPOINT
 // ==========================================
 app.get('/api/ngos', async (req, res) => {
   try {
-    // Fetch all users with the 'ngo' role, and hide their passwords for security!
     const ngos = await User.find({ role: 'ngo' }).select('-password').sort({ createdAt: -1 });
     res.status(200).json(ngos);
   } catch (error) {
@@ -234,6 +394,7 @@ app.get('/api/ngos', async (req, res) => {
     res.status(500).json({ message: "Server Error fetching NGO Directory" });
   }
 });
+
 // ==========================================
 // ✉️ MESSAGING API ENDPOINTS
 // ==========================================
@@ -262,13 +423,12 @@ app.get('/api/messages/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
 
-    // Find messages where the user is EITHER the sender OR the receiver
     const messages = await Message.find({
       $or: [{ sender: userId }, { receiver: userId }]
     })
-    .populate('sender', 'name role')     // Fetch the sender's actual name
-    .populate('receiver', 'name role')   // Fetch the receiver's actual name
-    .sort({ createdAt: -1 });            // Newest messages first
+    .populate('sender', 'name role')     
+    .populate('receiver', 'name role')   
+    .sort({ createdAt: -1 });            
 
     res.status(200).json(messages);
   } catch (error) {
@@ -277,10 +437,9 @@ app.get('/api/messages/:userId', async (req, res) => {
   }
 });
 
-// 3. Get all available users to message (so we can populate a dropdown)
+// 3. Get all available users to message
 app.get('/api/users', async (req, res) => {
   try {
-    // Fetch all users except passwords
     const users = await User.find().select('-password');
     res.status(200).json(users);
   } catch (error) {
@@ -292,7 +451,6 @@ app.get('/api/users', async (req, res) => {
 app.put('/api/messages/:id/read', async (req, res) => {
   try {
     const messageId = req.params.id;
-    // Find the message by ID and update its isRead status to true
     await Message.findByIdAndUpdate(messageId, { isRead: true });
     
     res.status(200).json({ message: "Message marked as read" });
@@ -311,7 +469,6 @@ app.get('/api/stats', async (req, res) => {
     const ngos = await User.countDocuments({ role: 'ngo' });
     const events = await Event.countDocuments();
     
-    // Let's assume each event generates an average of 5 hours of community service
     const hours = events * 5; 
 
     res.status(200).json({ volunteers, ngos, hours });
@@ -320,6 +477,7 @@ app.get('/api/stats', async (req, res) => {
     res.status(500).json({ message: "Server Error fetching stats" });
   }
 });
+
 // ==========================================
 // START SERVER
 // ==========================================

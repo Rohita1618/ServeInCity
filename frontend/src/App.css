@@ -122,3 +122,6 @@ body {
   transform: translateY(-5px);
   box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
 }
+.App {
+  padding-bottom: 75px; /* Gives space so content doesn't hide behind the navbar */
+}

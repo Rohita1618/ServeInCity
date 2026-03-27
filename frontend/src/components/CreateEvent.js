@@ -6,7 +6,7 @@ import { FaCalendarPlus, FaMapMarkerAlt, FaHeading, FaTags, FaUsers, FaAlignLeft
 const CreateEvent = () => {
   const navigate = useNavigate();
 
-  // 1. Added eventDate and eventTime to State
+  // 1. State for form data
   const [formData, setFormData] = useState({
     title: '',
     skill: 'Environment',
@@ -14,8 +14,8 @@ const CreateEvent = () => {
     city: 'Jabalpur',
     description: '',
     volunteersNeeded: 10,
-    eventDate: '', // NEW
-    eventTime: ''  // NEW
+    eventDate: '', 
+    eventTime: ''  
   });
 
   const [error, setError] = useState('');
@@ -31,7 +31,7 @@ const CreateEvent = () => {
     setError('');
     setSuccess('');
 
-    // 2. Updated Validation to include Date and Time
+    // 2. Validation
     if (!formData.title || !formData.loc || !formData.description || !formData.eventDate || !formData.eventTime) {
       setError('Please fill out all required fields, including Date and Time.');
       return;
@@ -40,22 +40,26 @@ const CreateEvent = () => {
     setLoading(true);
 
     try {
-      // --- NEW LOGIC: Get the NGO's ID from memory ---
+      // --- GET USER AND TOKEN FROM LOCAL STORAGE ---
       const userString = localStorage.getItem('user');
       const loggedInUser = userString ? JSON.parse(userString) : null;
+      const token = localStorage.getItem('token'); // Get the security token
 
-      if (!loggedInUser) throw new Error("You must be logged in to create an event.");
+      if (!loggedInUser || !token) throw new Error("You must be logged in to create an event.");
 
-      // Attach the ID to the form data
+      // Attach the ID and Email to the form data
       const eventDataToSend = {
         ...formData,
-        organizerId: loggedInUser.id
+        organizerId: loggedInUser.id,
+        ngoEmail: loggedInUser.email // Pass email for Nodemailer
       };
-      // -----------------------------------------------
+      
+      // 3. API Call to Backend
       const response = await fetch('http://localhost:5000/api/events', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` // Send token to backend for verification
         },
         body: JSON.stringify(eventDataToSend),
       });
@@ -66,11 +70,11 @@ const CreateEvent = () => {
         throw new Error(data.message || 'Failed to create event.');
       }
 
-      setSuccess('🎉 Opportunity published successfully! Redirecting to home...');
+      setSuccess('🎉 Opportunity published successfully! Check your email for confirmation.');
       
       setTimeout(() => {
         navigate('/');
-      }, 2000);
+      }, 2500);
 
     } catch (err) {
       setError(err.message);
@@ -106,7 +110,6 @@ const CreateEvent = () => {
               />
             </Form.Group>
 
-            {/* --- NEW DATE & TIME ROW --- */}
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-4">
@@ -133,8 +136,7 @@ const CreateEvent = () => {
                 </Form.Group>
               </Col>
             </Row>
-            {/* --------------------------- */}
-
+            
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-4">

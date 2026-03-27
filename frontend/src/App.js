@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Navbar, Container, Button, Modal, Badge, Row, Col, Card } from 'react-bootstrap';
-import { FaHome, FaSearch, FaList, FaUserAlt, FaBars, FaTrophy, FaHandsHelping, FaInfoCircle, FaCog, FaMapMarkerAlt, FaChevronDown, FaEnvelope, FaCalendarAlt, FaClock } from 'react-icons/fa';
+import { FaHome, FaSearch, FaList, FaUserAlt, FaBars, FaTrophy, FaHandsHelping, FaInfoCircle, FaCog, FaMapMarkerAlt, FaChevronDown, FaEnvelope, FaCalendarAlt, FaClock, FaShieldAlt } from 'react-icons/fa';
 import './App.css';
 
 // --- COMPONENTS ---
@@ -16,11 +16,15 @@ import NgoDirectory from './components/NgoDirectory';
 import AboutUs from './components/AboutUs';
 import Settings from './components/Settings';
 import Messages from './components/Messages';
+import AdminDashboard from './components/AdminDashboard';
 
 // ==========================================
 // 🏠 HOMEPAGE COMPONENT (Dynamic Stats & Events)
 // ==========================================
-const Home = () => {
+// ==========================================
+// 🏠 HOMEPAGE COMPONENT (Dynamic Stats & Events)
+// ==========================================
+const Home = ({ selectedCity }) => {
   const [events, setEvents] = useState([]);
   const [stats, setStats] = useState({ volunteers: 0, ngos: 0, hours: 0 });
   const [loading, setLoading] = useState(true);
@@ -75,6 +79,9 @@ const Home = () => {
     } catch (error) { alert(error.message); }
   };
 
+  // --- NEW: FILTER EVENTS BY THE SELECTED CITY ---
+  const filteredEvents = events.filter(event => event.city === selectedCity);
+
   return (
     <div className="main-content">
       <div className="hero-section text-center shadow">
@@ -107,14 +114,29 @@ const Home = () => {
       </Container>
 
       <Container className="my-5">
-        <h3 className="mb-4 text-center fw-bold" style={{ color: '#B22222' }}>Featured Opportunities</h3>
+        <h3 className="mb-4 text-center fw-bold" style={{ color: '#B22222' }}>Opportunities in {selectedCity}</h3>
+        
         {loading ? (
           <p className="text-center text-muted fw-bold">Loading local opportunities...</p>
-        ) : events.length === 0 ? (
-          <p className="text-center text-muted">No events found in your city yet.</p>
+        ) : filteredEvents.length === 0 ? (
+          
+          /* --- NEW: ENCOURAGING EMPTY STATE MESSAGE --- */
+          <div className="text-center py-5 bg-white rounded shadow-sm border" style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <span style={{ fontSize: '3rem' }}>🌱</span>
+            <h4 className="fw-bold text-dark mt-3">No active events in {selectedCity} right now.</h4>
+            <p className="text-muted px-4 mb-4">
+              Local NGOs are preparing their upcoming drives! Check back soon to find opportunities, or explore our other active cities.
+            </p>
+            {loggedInUser && loggedInUser.role === 'ngo' && (
+               <Button as={Link} to="/create-event" variant="warning" className="fw-bold rounded-pill px-4 shadow-sm text-dark">
+                 Host the First Event!
+               </Button>
+            )}
+          </div>
+
         ) : (
           <Row>
-            {events.slice(0, 3).map((event) => {
+            {filteredEvents.slice(0, 3).map((event) => {
               const hasJoined = loggedInUser && event.attendees.includes(loggedInUser.id);
               const isFull = event.volunteersNeeded <= 0;
               return (
@@ -168,6 +190,12 @@ function App() {
 
   const userString = localStorage.getItem('user');
   const loggedInUser = userString ? JSON.parse(userString) : null;
+  
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    window.location.href = '/'; // Redirect to home and refresh
+  };
 
   // Fetch Unread Messages for the dynamic badge
   useEffect(() => {
@@ -194,7 +222,6 @@ function App() {
       <div className="App bg-light min-vh-100 d-flex flex-column">
         
         {/* TOP NAVBAR */}
-        {/* TOP NAVBAR */}
         <Navbar expand="lg" variant="dark" className="shadow-sm sticky-top px-3 d-flex justify-content-between" style={{ backgroundColor: '#B22222' }}>
           
           {/* --- LEFT SIDE: Brand & Create Event --- */}
@@ -205,7 +232,7 @@ function App() {
               <span className="d-inline d-sm-none">SIC</span> {/* Shorter name for mobile screens! */}
             </Navbar.Brand>
             
-           {/* THE THEME-MATCHED CREATE BUTTON */}
+            {/* THE THEME-MATCHED CREATE BUTTON */}
             {loggedInUser && loggedInUser.role === 'ngo' && (
               <Link to="/create-event" 
                 className="d-flex align-items-center gap-2 px-3 py-1 text-decoration-none shadow-sm" 
@@ -224,8 +251,18 @@ function App() {
             )}
           </div>
           
-          {/* --- RIGHT SIDE: Messages & City Selector --- */}
+          {/* --- RIGHT SIDE: Auth, Messages & City Selector --- */}
           <div className="d-flex align-items-center gap-3">
+            
+            {/* Show Login/Signup if NOT logged in */}
+            {!loggedInUser && (
+              <div className="d-none d-md-flex gap-2">
+                <Link to="/login" className="text-white text-decoration-none fw-bold align-self-center small">Login</Link>
+                <Link to="/register" className="btn btn-warning btn-sm fw-bold rounded-pill px-3 shadow-sm" style={{ color: '#B22222' }}>Sign Up</Link>
+              </div>
+            )}
+
+            {/* Show Messages if logged in */}
             {loggedInUser && (
               <Link to="/messages" className="text-white position-relative mt-1">
                 <FaEnvelope size={22} style={{ color: '#FFF8E7' }} />
@@ -245,6 +282,7 @@ function App() {
           </div>
 
         </Navbar>
+        
         {/* CITY SELECTOR MODAL */}
         <Modal show={showCityModal} onHide={() => setShowCityModal(false)} centered>
           <Modal.Header closeButton className="border-0">
@@ -261,7 +299,7 @@ function App() {
 
         {/* APP ROUTER */}
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Home selectedCity={city} />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/create-event" element={<CreateEvent />} />
@@ -273,11 +311,12 @@ function App() {
           <Route path="/about" element={<AboutUs />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/messages" element={<Messages />} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
 
         {/* BOTTOM NAVIGATION (Mobile Friendly) */}
         {loggedInUser && (
-          <div className="bottom-nav shadow-lg d-flex justify-content-around py-2 px-3 bg-white fixed-bottom">
+          <div className="bottom-nav shadow-lg d-flex justify-content-around py-2 px-3 bg-white fixed-bottom" style={{ zIndex: 1050 }}>
             <Link to="/" className="text-center text-decoration-none text-muted nav-icon">
               <FaHome size={24} className="mb-1 d-block mx-auto" />
               <span className="small fw-bold">Home</span>
@@ -302,7 +341,23 @@ function App() {
                 <li><Link className="dropdown-item fw-bold py-2 text-secondary" to="/directory"><FaInfoCircle className="me-2" style={{ color: '#28a745' }}/> NGO Directory</Link></li>
                 <li><Link className="dropdown-item fw-bold py-2 text-secondary" to="/about"><FaHandsHelping className="me-2" style={{ color: '#17a2b8' }}/> About Us</Link></li>
                 <li><hr className="dropdown-divider" /></li>
+                
+                {/* SECRET ADMIN BUTTON */}
+                {loggedInUser && loggedInUser.role === 'admin' && (
+                  <li>
+                    <Link className="dropdown-item fw-bold py-2 text-danger" to="/admin">
+                      <FaShieldAlt className="me-2" /> Admin Dashboard
+                    </Link>
+                  </li>
+                )}
+
                 <li><Link className="dropdown-item fw-bold py-2 text-secondary" to="/settings"><FaCog className="me-2" style={{ color: '#6c757d' }}/> Settings</Link></li>
+                {/* NEW LOGOUT BUTTON */}
+                <li>
+                  <button className="dropdown-item fw-bold py-2 text-danger" onClick={handleLogout} style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left' }}>
+                    Logout
+                  </button>
+                </li>
               </ul>
             </div>
           </div>

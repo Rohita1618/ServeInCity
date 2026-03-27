@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
+    enum: ['volunteer', 'ngo', 'admin'],
     default: 'volunteer' // Can be 'volunteer' or 'ngo'
   },
   ngoRegistrationNumber: {
@@ -30,6 +31,22 @@ const userSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  // NEW: Profile Photo (Stored as a Base64 String)
+  profilePhoto: {
+    type: String,
+    default: ""
+  },
+  // ... your existing fields (name, email, password, role, etc.)
+  
+  // NEW: Fields for OTP Authentication
+  resetPasswordOtp: {
+    type: String,
+    required: false
+  },
+  resetPasswordExpire: {
+    type: Date,
+    required: false
   }
 });
 

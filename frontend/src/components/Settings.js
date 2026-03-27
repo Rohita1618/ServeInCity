@@ -1,141 +1,228 @@
-import React, { useState } from 'react';
-import { Container, Card, Form, Button, Row, Col } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import { FaUserCog, FaBell, FaLock, FaSignOutAlt, FaShieldAlt } from 'react-icons/fa';
-
+import React, { useState, useEffect } from 'react';
+import { Container, Card, Form, Button, Alert, Row, Col, InputGroup } from 'react-bootstrap';
+import { FaCog, FaLock, FaShieldAlt, FaUserEdit, FaSave, FaCamera, FaEye, FaEyeSlash } from 'react-icons/fa';
 const Settings = () => {
-  const navigate = useNavigate();
+  const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   
-  // Grab the current user from memory
+  const [profileData, setProfileData] = useState({ name: '', city: '', profilePhoto: '' });
+  const [profileMessage, setProfileMessage] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [imagePreview, setImagePreview] = useState(null);
+
+  const token = localStorage.getItem('token');
   const userString = localStorage.getItem('user');
   const loggedInUser = userString ? JSON.parse(userString) : null;
 
-  // Mock state for our notification toggles (makes the UI feel alive!)
-  const [emailNotifs, setEmailNotifs] = useState(true);
-  const [smsNotifs, setSmsNotifs] = useState(false);
+  useEffect(() => {
+    if (loggedInUser) {
+      setProfileData({
+        name: loggedInUser.name || '',
+        city: loggedInUser.city || '',
+        profilePhoto: loggedInUser.profilePhoto || ''
+      });
+      setImagePreview(loggedInUser.profilePhoto || null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // 🛑 THE LOGOUT FUNCTION
-  const handleLogout = () => {
-    // 1. Wipe the security token and user data from the browser
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    
-    // 2. Alert the user
-    alert('You have been securely logged out. See you next time!');
-    
-    // 3. Kick them back to the login page
-    navigate('/login');
-    
-    // 4. Force a hard reload so the React Navbar updates instantly
-    window.location.reload();
+  // --- THE MAGIC: Convert Image to Base64 String ---
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5000000) { // Limit to 5MB
+        return setProfileError("Image is too large. Please select an image under 5MB.");
+      }
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onloadend = () => {
+        setImagePreview(reader.result); // Show preview instantly
+        setProfileData({ ...profileData, profilePhoto: reader.result }); // Save string for backend
+      };
+    }
   };
 
-  // If someone tries to access settings without logging in, block them
-  if (!loggedInUser) {
-    return (
-      <Container className="my-5 text-center">
-        <h3 className="text-muted">Please log in to view your settings.</h3>
-        <Button onClick={() => navigate('/login')} className="mt-3 btn-masala">Go to Login</Button>
-      </Container>
-    );
-  }
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setProfileMessage('');
+    setProfileError('');
+
+    try {
+      const response = await fetch('http://localhost:5000/api/users/profile', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify(profileData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setProfileMessage('Profile successfully updated!');
+        localStorage.setItem('user', JSON.stringify(data));
+      } else {
+        throw new Error(data.message || 'Failed to update profile');
+      }
+    } catch (err) {
+      setProfileError(err.message);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    // ... (Keep your existing password change logic here!)
+    e.preventDefault();
+    setPasswordMessage('');
+    setPasswordError('');
+
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      return setPasswordError("New passwords do not match!");
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/api/users/change-password', {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({
+          currentPassword: passwords.currentPassword,
+          newPassword: passwords.newPassword
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setPasswordMessage('Password successfully updated!');
+        setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        throw new Error(data.message || 'Failed to update password');
+      }
+    } catch (err) {
+      setPasswordError(err.message);
+    }
+  };
+
+  if (!loggedInUser) return <Container className="my-5 text-center"><Alert variant="warning">Please log in.</Alert></Container>;
 
   return (
-    <Container className="my-5 main-content d-flex justify-content-center">
-      <div style={{ maxWidth: '800px', width: '100%' }}>
-        
-        <div className="mb-4">
-          <h2 className="fw-bold" style={{ color: '#B22222' }}>
-            <FaUserCog className="me-3 mb-1" />
-            Account Settings
-          </h2>
-          <p className="text-muted fs-5">Manage your preferences and security.</p>
-        </div>
+    <Container className="my-5 pb-5">
+      <h2 className="fw-bold mb-4" style={{ color: '#6c757d' }}><FaCog className="me-2 mb-1" /> Account Settings</h2>
+      <Row>
+        <Col md={6}>
+          <Card className="border-0 shadow-sm mb-4">
+            <Card.Body className="p-4">
+              <h5 className="fw-bold mb-3"><FaUserEdit className="me-2 text-primary"/> Edit Profile</h5>
+              <hr />
+              {profileMessage && <Alert variant="success">{profileMessage}</Alert>}
+              {profileError && <Alert variant="danger">{profileError}</Alert>}
 
-        <Row className="g-4">
-          
-          {/* --- PROFILE DETAILS CARD --- */}
-          <Col md={12}>
-            <Card className="border-0 shadow-sm" style={{ borderRadius: '15px' }}>
-              <Card.Header className="bg-white border-bottom-0 pt-4 pb-0 px-4">
-                <h5 className="fw-bold" style={{ color: '#5D4037' }}><FaShieldAlt className="me-2 text-warning"/> Account Information</h5>
-              </Card.Header>
-              <Card.Body className="p-4">
-                <Row className="mb-3">
-                  <Col sm={4} className="text-muted fw-bold">Full Name:</Col>
-                  <Col sm={8} className="fw-bold">{loggedInUser.name}</Col>
-                </Row>
-                <Row className="mb-3">
-                  <Col sm={4} className="text-muted fw-bold">Email Address:</Col>
-                  <Col sm={8}>{loggedInUser.email}</Col>
-                </Row>
-                <Row className="mb-3">
-                  <Col sm={4} className="text-muted fw-bold">Account Type:</Col>
-                  <Col sm={8} className="text-capitalize">
-                    {loggedInUser.role === 'ngo' ? '🏢 Registered NGO' : '🌟 Volunteer'}
-                  </Col>
-                </Row>
-                <Row>
-                  <Col sm={4} className="text-muted fw-bold">City:</Col>
-                  <Col sm={8}>{loggedInUser.city}</Col>
-                </Row>
-              </Card.Body>
-            </Card>
-          </Col>
-
-          {/* --- NOTIFICATIONS CARD --- */}
-          <Col md={6}>
-            <Card className="border-0 shadow-sm h-100" style={{ borderRadius: '15px' }}>
-              <Card.Body className="p-4">
-                <h5 className="fw-bold mb-4" style={{ color: '#5D4037' }}><FaBell className="me-2 text-warning"/> Notifications</h5>
+              <Form onSubmit={handleProfileUpdate}>
                 
-                <Form.Check 
-                  type="switch"
-                  id="email-switch"
-                  label="Email Alerts (New Events)"
-                  className="mb-3 fw-bold text-secondary"
-                  checked={emailNotifs}
-                  onChange={() => setEmailNotifs(!emailNotifs)}
-                />
-                <Form.Check 
-                  type="switch"
-                  id="sms-switch"
-                  label="SMS Reminders"
-                  className="fw-bold text-secondary"
-                  checked={smsNotifs}
-                  onChange={() => setSmsNotifs(!smsNotifs)}
-                />
-              </Card.Body>
-            </Card>
-          </Col>
-
-          {/* --- SECURITY CARD --- */}
-          <Col md={6}>
-            <Card className="border-0 shadow-sm h-100" style={{ borderRadius: '15px' }}>
-              <Card.Body className="p-4 d-flex flex-column">
-                <h5 className="fw-bold mb-4" style={{ color: '#5D4037' }}><FaLock className="me-2 text-warning"/> Security</h5>
-                
-                <Button variant="outline-secondary" className="mb-3 fw-bold rounded-pill" disabled>
-                  Change Password
-                </Button>
-                
-                {/* THE DANGER ZONE */}
-                <div className="mt-auto pt-3 border-top">
-                  <Button 
-                    variant="danger" 
-                    className="w-100 fw-bold rounded-pill shadow-sm"
-                    onClick={handleLogout}
-                  >
-                    <FaSignOutAlt className="me-2"/> Secure Logout
-                  </Button>
+                {/* NEW PHOTO UPLOAD UI */}
+                <div className="text-center mb-4">
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Profile Preview" className="rounded-circle shadow-sm mb-3" style={{ width: '120px', height: '120px', objectFit: 'cover', border: '3px solid #f8f9fa' }} />
+                  ) : (
+                    <div className="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-3 shadow-sm" style={{ width: '120px', height: '120px', border: '3px solid #f8f9fa' }}>
+                      <FaCamera size={40} className="text-secondary" />
+                    </div>
+                  )}
+                  <Form.Group>
+                    <Form.Label className="btn btn-outline-primary btn-sm fw-bold rounded-pill shadow-sm" style={{ cursor: 'pointer' }}>
+                      Change Photo
+                      <Form.Control type="file" accept="image/*" onChange={handleImageUpload} hidden />
+                    </Form.Label>
+                  </Form.Group>
                 </div>
-                
-              </Card.Body>
-            </Card>
-          </Col>
 
-        </Row>
-      </div>
+                <Form.Group className="mb-3">
+                  <Form.Label className="text-secondary fw-bold small">Full Name</Form.Label>
+                  <Form.Control type="text" required value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} />
+                </Form.Group>
+                <Form.Group className="mb-4">
+                  <Form.Label className="text-secondary fw-bold small">City</Form.Label>
+                  <Form.Control type="text" required value={profileData.city} onChange={(e) => setProfileData({...profileData, city: e.target.value})} />
+                </Form.Group>
+                
+                <Button type="submit" variant="primary" className="w-100 fw-bold shadow-sm"><FaSave className="me-2"/> Save Changes</Button>
+              </Form>
+            </Card.Body>
+          </Card>
+        </Col>
+
+        <Col md={6}>
+          {/* ... Your Password Card goes here (no changes needed) ... */}
+          <Card className="border-0 shadow-sm mb-4">
+            <Card.Body className="p-4">
+              <h5 className="fw-bold mb-3"><FaShieldAlt className="me-2 text-success"/> Security</h5>
+              <hr />
+              {passwordMessage && <Alert variant="success">{passwordMessage}</Alert>}
+              {passwordError && <Alert variant="danger">{passwordError}</Alert>}
+              <Form onSubmit={handlePasswordChange}>
+                {/* 1. Current Password */}
+                <Form.Group className="mb-3">
+                  <Form.Label className="text-secondary fw-bold small">Current Password</Form.Label>
+                  <InputGroup>
+                    <Form.Control 
+                      type={showCurrent ? "text" : "password"} 
+                      required 
+                      value={passwords.currentPassword} 
+                      onChange={(e) => setPasswords({...passwords, currentPassword: e.target.value})} 
+                    />
+                    <Button variant="outline-secondary" onClick={() => setShowCurrent(!showCurrent)} style={{ borderColor: '#ced4da' }}>
+                      {showCurrent ? <FaEyeSlash /> : <FaEye />}
+                    </Button>
+                  </InputGroup>
+                </Form.Group>
+
+                {/* 2. New Password */}
+                <Form.Group className="mb-3">
+                  <Form.Label className="text-secondary fw-bold small">New Password</Form.Label>
+                  <InputGroup>
+                    <Form.Control 
+                      type={showNew ? "text" : "password"} 
+                      required 
+                      minLength="6"
+                      value={passwords.newPassword} 
+                      onChange={(e) => setPasswords({...passwords, newPassword: e.target.value})} 
+                    />
+                    <Button variant="outline-secondary" onClick={() => setShowNew(!showNew)} style={{ borderColor: '#ced4da' }}>
+                      {showNew ? <FaEyeSlash /> : <FaEye />}
+                    </Button>
+                  </InputGroup>
+                </Form.Group>
+
+                {/* 3. Confirm New Password */}
+                <Form.Group className="mb-4">
+                  <Form.Label className="text-secondary fw-bold small">Confirm New Password</Form.Label>
+                  <InputGroup>
+                    <Form.Control 
+                      type={showConfirm ? "text" : "password"} 
+                      required 
+                      minLength="6"
+                      value={passwords.confirmPassword} 
+                      onChange={(e) => setPasswords({...passwords, confirmPassword: e.target.value})} 
+                    />
+                    <Button variant="outline-secondary" onClick={() => setShowConfirm(!showConfirm)} style={{ borderColor: '#ced4da' }}>
+                      {showConfirm ? <FaEyeSlash /> : <FaEye />}
+                    </Button>
+                  </InputGroup>
+                </Form.Group>
+                <Button type="submit" variant="dark" className="w-100 fw-bold shadow-sm"><FaLock className="me-2"/> Update Password</Button>
+              </Form>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
     </Container>
   );
 };
