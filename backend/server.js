@@ -479,9 +479,16 @@ app.get('/api/stats', async (req, res) => {
 });
 
 // ==========================================
-// START SERVER
+// START SERVER (OR EXPORT FOR TESTING)
 // ==========================================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+
+// Only start the server if we are NOT running a test
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+}
+
+// Export the app so our robotic tester can use it
+module.exports = app;

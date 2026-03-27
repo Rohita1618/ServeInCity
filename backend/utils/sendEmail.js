@@ -4,13 +4,14 @@ const sendEmail = async (options) => {
     try {
         // 1. Create the "Transporter" (The mail carrier)
         const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: process.env.EMAIL_USER, // Your Gmail address
-                pass: process.env.EMAIL_PASS  // Your Gmail App Password
-            }
-        });
-
+  host: 'smtp.zoho.in', // Using .in because your MX records were in the Indian data center!
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
         // 2. Define the email content
         const mailOptions = {
             from: 'ServeInCity <noreply@serveincity.com>',
