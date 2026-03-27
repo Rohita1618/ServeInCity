@@ -20,12 +20,12 @@ const Messages = () => {
     if (!loggedInUser) return;
     try {
       // 1. Fetch User's Messages
-      const msgRes = await fetch(`http://localhost:5000/api/messages/${loggedInUser.id}`);
+      const msgRes = await fetch(`${process.env.REACT_APP_API_URL}/api/messages/${loggedInUser.id}`);
       const msgData = await msgRes.json();
       setMessages(msgData);
 
       // 2. Fetch All Users (for the dropdown list)
-      const userRes = await fetch('http://localhost:5000/api/users');
+      const userRes = await fetch(`${process.env.REACT_APP_API_URL}/api/users`);
       let userData = await userRes.json();
       
       // Filter out the currently logged-in user so they can't message themselves
@@ -50,7 +50,7 @@ const Messages = () => {
 
     setSending(true);
     try {
-      const response = await fetch('http://localhost:5000/api/messages', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -75,7 +75,7 @@ const Messages = () => {
   // 🛑 NEW FUNCTION: Mark a message as read
   const handleMarkAsRead = async (msgId) => {
     try {
-      await fetch(`http://localhost:5000/api/messages/${msgId}/read`, {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/messages/${msgId}/read`, {
         method: 'PUT'
       });
       fetchData(); // Instantly refresh the messages to update the UI

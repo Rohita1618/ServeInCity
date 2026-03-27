@@ -9,7 +9,7 @@ const NgoDirectory = () => {
   useEffect(() => {
     const fetchNgos = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/ngos');
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/ngos`);
         const data = await response.json();
         setNgos(data);
         setLoading(false);

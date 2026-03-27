@@ -26,7 +26,7 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -55,7 +55,7 @@ const Login = () => {
     setLoading(true); // Freeze the button!
     
     try {
-      const response = await fetch('http://localhost:5000/api/users/forgot-password', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/users/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: resetData.email }),
@@ -80,7 +80,7 @@ const Login = () => {
     e.preventDefault();
     setResetError('');
     try {
-      const response = await fetch('http://localhost:5000/api/users/reset-password', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/users/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(resetData),

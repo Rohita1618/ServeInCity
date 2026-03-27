@@ -13,7 +13,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchAllEvents = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/events');
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/events`);
         const data = await response.json();
         setEvents(data);
       } catch (err) {
@@ -27,7 +27,7 @@ const AdminDashboard = () => {
     if (!window.confirm("Are you sure you want to permanently delete this event?")) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/events/${eventId}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/events/${eventId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

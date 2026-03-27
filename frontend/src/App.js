@@ -35,7 +35,7 @@ const Home = ({ selectedCity }) => {
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/events');
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/events`);
         const data = await response.json();
         setEvents(data);
       } catch (error) { console.error(error); }
@@ -43,7 +43,7 @@ const Home = ({ selectedCity }) => {
 
     const fetchStats = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/stats');
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/stats`);
         const data = await response.json();
         setStats(data);
       } catch (error) { console.error(error); }
@@ -65,7 +65,7 @@ const Home = ({ selectedCity }) => {
     if (loggedInUser.role === 'ngo') return alert("NGO accounts cannot join events as volunteers.");
     
     try {
-      const response = await fetch(`http://localhost:5000/api/events/${eventId}/join`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/events/${eventId}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: loggedInUser.id }),
@@ -74,7 +74,7 @@ const Home = ({ selectedCity }) => {
       if (!response.ok) throw new Error(data.message);
       
       alert("🎉 " + data.message);
-      const updatedEvents = await fetch('http://localhost:5000/api/events');
+      const updatedEvents = await fetch(`${process.env.REACT_APP_API_URL}/api/events`);
       setEvents(await updatedEvents.json());
     } catch (error) { alert(error.message); }
   };
@@ -202,7 +202,7 @@ function App() {
     if (loggedInUser) {
       const fetchMessageCount = async () => {
         try {
-          const response = await fetch(`http://localhost:5000/api/messages/${loggedInUser.id}`);
+          const response = await fetch(`${process.env.REACT_APP_API_URL}/api/messages/${loggedInUser.id}`);
           const data = await response.json();
           // Count only messages where this user is the receiver!
           const unreadMessages = data.filter(msg => 

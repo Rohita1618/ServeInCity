@@ -23,7 +23,7 @@ const Categories = () => {
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/events');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/events`);
       const data = await response.json();
       setEvents(data);
       setLoading(false);
@@ -47,7 +47,7 @@ const Categories = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/events/${eventId}/join`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/events/${eventId}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: loggedInUser.id }),

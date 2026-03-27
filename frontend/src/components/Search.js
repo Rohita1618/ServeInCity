@@ -21,7 +21,7 @@ const Search = () => {
   // 3. Fetch all events exactly once when the page loads
   const fetchEvents = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/events');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/events`);
       const data = await response.json();
       setAllEvents(data);
       setFilteredEvents(data); // Initially, show everything!
@@ -73,7 +73,7 @@ const Search = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/events/${eventId}/join`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/events/${eventId}/join`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: loggedInUser.id }),

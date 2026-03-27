@@ -9,7 +9,7 @@ const Leaderboard = () => {
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/leaderboard');
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/api/leaderboard`);
         const data = await response.json();
         setLeaders(data);
         setLoading(false);

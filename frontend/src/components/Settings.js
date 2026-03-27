@@ -53,7 +53,7 @@ const Settings = () => {
     setProfileError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/users/profile', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/users/profile`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -86,7 +86,7 @@ const Settings = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/users/change-password', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/users/change-password`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
